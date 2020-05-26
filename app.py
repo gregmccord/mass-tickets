@@ -23,12 +23,10 @@ app.secret_key = b'\x175^\xcf\x823h\xe5\xf1v\xa45\xd7[<9'
 
 @app.route('/')
 def root():
-    print('index')
     return app.send_static_file('index.html')
 
 @app.route('/time', methods=['GET'])
 def get_current_time():
-    print('test')
     return jsonify(time=time.time())
 
 # Main function
