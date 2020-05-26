@@ -17,6 +17,7 @@
 
 .App-Body {
   padding: 5vh 3vw;
+  background-color: #eeeeee;
 }
 
 .Request-ticket {
@@ -38,5 +39,6 @@
 
 @media (max-width: 600px)
 {
-  .Request-ticket {width: 100%;}
+  .App-header {height: 80px; padding: 0 5px; text-align: center;}
+  .Request-ticket {width: 100%; min-width: 100%;}
 }
