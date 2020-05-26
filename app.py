@@ -6,8 +6,10 @@
 #-----------------------------------------------------------------------
 
 import time
+import Database as db
+from urllib.parse import unquote
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 
 #-----------------------------------------------------------------------
 
@@ -25,9 +27,30 @@ app.secret_key = b'\x175^\xcf\x823h\xe5\xf1v\xa45\xd7[<9'
 def root():
     return app.send_static_file('index.html')
 
-@app.route('/time', methods=['GET'])
-def get_current_time():
-    return jsonify(time=time.time())
+
+@app.route('/getNumTickets', methods=['GET'])
+def get_num_tickets():
+
+    mass_db = db.Database()
+    tickets,days = mass_db.get_num_tickets()
+
+    return jsonify(tickets=tickets, days=days)
+
+
+@app.route('/getPrevTickets', methods=['GET'])
+def get_prev_tickets():
+
+    mass_day_time = unquote(request.args.get('mass_day_time'))
+    email = unquote(request.args.get('email'))
+
+    print(mass_day_time)
+    print(email)
+
+    mass_db = db.Database()
+    tickets = mass_db.check_has_ticket(mass_day_time, email)
+
+    return jsonify(tickets=tickets)
+
 
 # Main function
 def main():

@@ -2,6 +2,7 @@ import React, { useState , useEffect } from 'react';
 import Modal from 'react-bootstrap/Modal';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
+import Spinner from 'react-bootstrap/Spinner';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -13,19 +14,41 @@ function App() {
   const [numPeople, setNumPeople] = useState("---");
   const [email, setEmail] = useState("");
   const [show, setShow] = useState(false);
-  const [time, setTime] = useState("");
+  const [spots, setSpots] = useState(null);
+  const [sortedDays, setSortedDays] = useState(null);
+  const [prevTickets, setPrevTickets] = useState(null);
+  const [submitted, setSubmitted] = useState(false);
 
-  let spots = {"Saturday, May 30, 5:00PM" : {"1-2" : 0, "3-4" : 0, "5-6": 0},
-               "Sunday, May 31, 7:30AM"   : {"1-2" : 5, "3-4" : 1, "5-6": 0},
-               "Sunday, May 31, 11:00AM"  : {"1-2" : 5, "3-4" : 1, "5-6": 6}
-              }
+  useEffect(() => {
+    async function fetchNumTickets() {
+      fetch('/getNumTickets').then(res => res.json()).then(data => {
+        setSpots(data.tickets);
+        setSortedDays(data.days);
+      });
+    }
+    fetchNumTickets();
+  }, []);
 
-  let usedEmails = {"Saturday, May 30, 5:00PM" : new Set(["gmccord@princeton.edu"]),
-                    "Sunday, May 31, 7:30AM"   : new Set(["gmccord@princeton.edu"]),
-                    "Sunday, May 31, 11:00AM"  : new Set([]) }
+  useEffect(() => {
+    if (submitted) {
+      async function fetchPrevTickets() {
+        let data = await fetch('/getPrevTickets?mass_day_time=' + massDayTime + '&email=' + email).then(res => res.json());
+        setPrevTickets(data.tickets);
 
-  const handleClose = () => setShow(false);
+        if (data.tickets.length > 0) {
+          handleShow();
+        }
+        else {
+          sendNew();
+        }
+      }
+    fetchPrevTickets();
+    }
+
+  }, [submitted]); // eslint-disable-line
+
   const handleShow = () => setShow(true);
+  const handleClose = () => {setShow(false); setSubmitted(false);};
   const handleResend = () => {setShow(false); resend(); };
   const handleNew = () => {setShow(false); sendNew(); };
 
@@ -77,30 +100,19 @@ function App() {
     return initString;
   }
 
-  function handleSubmit(event) {
-    if (usedEmails[massDayTime].has(email)) {
-      handleShow();
-    }
-    else {
-      sendNew();
-    }
+  function handleSubmit() {
+    setSubmitted(true);
   }
 
   function sendNew() {
     console.log("New!");
+    setSubmitted(false);
   }
 
   function resend() {
     console.log("Old!");
+    setSubmitted(false);
   }
-
-  useEffect(() => {
-    fetch('/time').then(res => res.json()).then(data => {
-      setTime(data.time);
-    });
-  }, []);
-
-  console.log(time);
 
   return (
     <div className="App">
@@ -108,59 +120,77 @@ function App() {
         St. Mary's of the Assumption Mass Ticket App
       </header>
       <div className="App-Body">
-        <Form className="Request-ticket">
-          <Form.Group controlId="MassDayTime">
-            <Form.Label>Mass Day/Time</Form.Label>
-            <Form.Control as="select" onChange={e => setMassDayTime(e.target.value)}>
-              <option>---</option>
-              <option>Saturday, May 30, 5:00PM</option>
-              <option>Sunday, May 31, 7:30AM</option>
-              <option>Sunday, May 31, 11:00AM</option>
-            </Form.Control>
-          </Form.Group>
-          { (!spotsAvailable() && massDayTime !== "---") &&
-            <div>
-              There are no spots remaining for this mass.
-            </div>
-          }
-          { (spotsAvailable() && massDayTime !== "---") &&
-            <div>
-              <div>
-                {getSpots()}
-              </div>
-              <Form.Group controlId="Email" size="lg">
-                <Form.Label>Email Address</Form.Label>
-                <Form.Control
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  type="email"
-                />
-              </Form.Group>
-              <Form.Group controlId="NumberPeople">
-                <Form.Label>Select Number of People</Form.Label>
-                <Form.Control as="select" onChange={e => setNumPeople(e.target.value)}>
-                  <option>---</option>
-                  <option>1-2</option>
-                  <option>3-4</option>
-                  <option>5-6</option>
-                </Form.Control>
-              </Form.Group>
-            </div>
-          }
-          { (massDayTime !== "---" && spots[massDayTime][numPeople] <= 0 && setNumPeople !== "---") &&
-            <div className="Selection-Alert">
-              ***There are no spots remaining for {numPeople} people at this mass. Please select a dfferent group size or a different mass.
-            </div>
-          }
-          { canSubmit() &&
-            <Form.Group>
-              <Button block size="lg" type="button" onClick={handleSubmit}>
-                Get Ticket
-              </Button>
+        { (spots === null || sortedDays === null) &&
+          <div className="d-flex justify-content-center">
+            <Spinner animation="border" role="status">
+              <span className="sr-only">Loading...</span>
+            </Spinner>
+          </div>
+        }
+        { (spots !== null && sortedDays !== null) &&
+          <Form className="Request-ticket">
+            <Form.Group controlId="MassDayTime">
+              <Form.Label>Mass Day/Time</Form.Label>
+              <Form.Control as="select" onChange={e => setMassDayTime(e.target.value)}>
+                <option>---</option>
+                {
+                  sortedDays.map((item, index) => ( 
+                    <option key={index}>{item}</option> 
+                  ))
+                }
+              </Form.Control>
             </Form.Group>
-          }
-        </Form>
+            { (!spotsAvailable() && massDayTime !== "---") &&
+              <div>
+                There are no spots remaining for this mass.
+              </div>
+            }
+            { (spotsAvailable() && massDayTime !== "---") &&
+              <div>
+                <div>
+                  {getSpots()}
+                </div>
+                <Form.Group controlId="Email" size="lg">
+                  <Form.Label>Email Address</Form.Label>
+                  <Form.Control
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    type="email"
+                  />
+                </Form.Group>
+                <Form.Group controlId="NumberPeople">
+                  <Form.Label>Select Number of People</Form.Label>
+                  <Form.Control as="select" value={numPeople} onChange={e => setNumPeople(e.target.value)}>
+                    <option>---</option>
+                    <option>1-2</option>
+                    <option>3-4</option>
+                    <option>5-6</option>
+                  </Form.Control>
+                </Form.Group>
+              </div>
+            }
+            { (massDayTime !== "---" && spots[massDayTime][numPeople] <= 0 && setNumPeople !== "---" && spotsAvailable()) &&
+              <div className="Selection-Alert">
+                ***There are no spots remaining for {numPeople} people at this mass. Please select a dfferent group size or a different mass.
+              </div>
+            }
+            { canSubmit() &&
+              <Form.Group>
+                <Button block size="lg" type="button" onClick={handleSubmit}>
+                  Get Ticket
+                </Button>
+              </Form.Group>
+            }
+          </Form>
+        }
+        { submitted &&
+          <div className="d-flex justify-content-center">
+            <Spinner animation="border" role="status">
+              <span className="sr-only">Loading...</span>
+            </Spinner>
+          </div>
+        }
       </div>
       <Modal show={show} onHide={handleClose}>
         <Modal.Header closeButton>
