@@ -1,6 +1,5 @@
 {
   "name": "mass-tickets",
-  "homepage": "http://gregmccord.github.io/mass-tickets",
   "version": "0.1.0",
   "private": true,
   "dependencies": {

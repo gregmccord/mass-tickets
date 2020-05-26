@@ -164,7 +164,7 @@ function App() {
       </div>
       <Modal show={show} onHide={handleClose}>
         <Modal.Header closeButton>
-          <Modal.Title>Modal heading</Modal.Title>
+          <Modal.Title>Alert</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           We see that you have already signed up for this mass with this email address.
