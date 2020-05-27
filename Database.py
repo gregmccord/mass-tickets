@@ -5,9 +5,8 @@
 # Authors: Gregory McCord, Min Lee, and Rohan Joshi
 #-----------------------------------------------------------------------
 
-import psycopg2
-import time
 import os
+import psycopg2
 from datetime import datetime
 
 class Database (object):

@@ -5,7 +5,7 @@
 # Authors: Gregory McCord and Christopher McCord
 #-----------------------------------------------------------------------
 
-import time
+import os
 import Database as db
 from urllib.parse import unquote
 
@@ -118,9 +118,16 @@ def create_ticket(ticket_seat):
 
 # Send email with specified attachment
 def send_email(mass_day_time, email, attachment):
+    try:
+        # Test if being run from Heroku
+        os.environ['MAILGUN_DOMAIN']
+    except:
+        # Do not send email if run locally
+        return
+
     return requests.post(
-        "https://api.mailgun.net/v3/sandboxae0bfb8bebc1405eba4bc281a1544173.mailgun.org",
-        auth=("api", "8a1b5dfa75c80854b65b07cbd614451a-7fba8a4e-8eaea9b0"),
+        "https://api.mailgun.net/v3/" + os.environ['MAILGUN_DOMAIN'],
+        auth=("api", os.environ['MAILGUN_API_KEY']),
         files=[("attachment", ("Mass Ticket for " + mass_day_time +".jpg", attachment))],
         data={"from": "Mass Ticket App <mass.tickets@mass-tickets.heroku.com>",
               "to": email,
