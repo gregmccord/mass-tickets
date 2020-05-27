@@ -33,6 +33,7 @@ def get_num_tickets():
 
     mass_db = db.Database()
     tickets,days = mass_db.get_num_tickets()
+    mass_db.close()
 
     return jsonify(tickets=tickets, days=days)
 
@@ -43,13 +44,88 @@ def get_prev_tickets():
     mass_day_time = unquote(request.args.get('mass_day_time'))
     email = unquote(request.args.get('email'))
 
-    print(mass_day_time)
-    print(email)
-
     mass_db = db.Database()
     tickets = mass_db.check_has_ticket(mass_day_time, email)
+    mass_db.close()
 
     return jsonify(tickets=tickets)
+
+
+@app.route('/getNewTicket', methods=['GET'])
+def get_new_ticket():
+    # Generate ticket (and determine seat), return it (for display in new tab in browser), and email it
+
+    mass_day_time = unquote(request.args.get('mass_day_time'))
+    email = unquote(request.args.get('email'))
+
+    mass_db = db.Database()
+
+    # Determine if this request won the race condition and got the ticket
+    did_get_ticket = mass_db.get_new_ticket_for_mass(mass_day_time, num_people)
+
+    if did_get_ticket:
+        # Get ticket seat
+        ticket_seat = det_ticket_seat(mass_day_time)
+        mass_db.correct_placeholder_ticket(mass_day_time, email, ticket_seat)
+        mass_db.close()
+
+        # Create ticket
+        ticket = create_ticket(ticket_seat)
+
+        # Email ticket
+        send_email(mass_day_time, email, ticket)
+
+        return jsonify(success=True, ticket=ticket)
+
+    else:
+        mass_db.close()
+        return jsonify(success=False, ticket=None)
+
+
+@app.route('/getOldTicket', methods=['GET'])
+def get_old_tickets():
+    # Generate ticket(s) given their seat(s), do not display it, and email it
+
+    mass_day_time = unquote(request.args.get('mass_day_time'))
+    email = unquote(request.args.get('email'))
+    ticket_seats = unquote(request.args.get('tickets'))
+
+    for ticket_seat in ticket_seats:
+        ticket = create_ticket(ticket_seat)
+        send_email(mass_day_time, email, ticket)
+
+
+# Determine new ticket seat via greedy algorithm
+def det_ticket_seat(mass_day_time):
+    occupied_seats = find_occupied_seats(mass_day_time)
+
+    pass
+
+
+# Determine which seats are occupied for use in greedy algorithm
+def find_occupied_seats(mass_day_time):
+
+    mass_db = db.Database()
+    occupied_seats = mass_db.get_all_used_tickets_for_mass(mass_day_time)
+    mass_db.close()
+
+    return occupied_seats
+
+# Create ticket
+def create_ticket(ticket_seat):
+    pass
+
+
+# Send email with specified attachment
+def send_email(mass_day_time, email, attachment):
+    return requests.post(
+        "https://api.mailgun.net/v3/sandboxae0bfb8bebc1405eba4bc281a1544173.mailgun.org",
+        auth=("api", "8a1b5dfa75c80854b65b07cbd614451a-7fba8a4e-8eaea9b0"),
+        files=[("attachment", ("Mass Ticket for " + mass_day_time +".jpg", attachment))],
+        data={"from": "Mass Ticket App <mass.tickets@mass-tickets.heroku.com>",
+              "to": email,
+              "subject": "Ticket to St. Mary's of the Assumption",
+              "text": "We hope you enjoy! Please see your ticket for seating and further instructions."})
 
 
 # Main function

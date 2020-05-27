@@ -3,6 +3,7 @@ import Modal from 'react-bootstrap/Modal';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
+import LoadingOverlay from 'react-loading-overlay';
 import './App.css';
 import 'bootstrap/dist/css/bootstrap.min.css';
 
@@ -115,105 +116,104 @@ function App() {
   }
 
   return (
-    <div className="App">
-      <header className="App-header">
-        St. Mary's of the Assumption Mass Ticket App
-      </header>
-      <div className="App-Body">
-        { (spots === null || sortedDays === null) &&
-          <div className="d-flex justify-content-center">
-            <Spinner animation="border" role="status">
-              <span className="sr-only">Loading...</span>
-            </Spinner>
-          </div>
-        }
-        { (spots !== null && sortedDays !== null) &&
-          <Form className="Request-ticket">
-            <Form.Group controlId="MassDayTime">
-              <Form.Label>Mass Day/Time</Form.Label>
-              <Form.Control as="select" onChange={e => setMassDayTime(e.target.value)}>
-                <option>---</option>
-                {
-                  sortedDays.map((item, index) => ( 
-                    <option key={index}>{item}</option> 
-                  ))
-                }
-              </Form.Control>
-            </Form.Group>
-            { (!spotsAvailable() && massDayTime !== "---") &&
-              <div>
-                There are no spots remaining for this mass.
-              </div>
-            }
-            { (spotsAvailable() && massDayTime !== "---") &&
-              <div>
-                <div>
-                  {getSpots()}
-                </div>
-                <Form.Group controlId="Email" size="lg">
-                  <Form.Label>Email Address</Form.Label>
-                  <Form.Control
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    type="email"
-                  />
-                </Form.Group>
-                <Form.Group controlId="NumberPeople">
-                  <Form.Label>Select Number of People</Form.Label>
-                  <Form.Control as="select" value={numPeople} onChange={e => setNumPeople(e.target.value)}>
-                    <option>---</option>
-                    <option>1-2</option>
-                    <option>3-4</option>
-                    <option>5-6</option>
-                  </Form.Control>
-                </Form.Group>
-              </div>
-            }
-            { (massDayTime !== "---" && spots[massDayTime][numPeople] <= 0 && setNumPeople !== "---" && spotsAvailable()) &&
-              <div className="Selection-Alert">
-                ***There are no spots remaining for {numPeople} people at this mass. Please select a dfferent group size or a different mass.
-              </div>
-            }
-            { canSubmit() &&
-              <Form.Group>
-                <Button block size="lg" type="button" onClick={handleSubmit}>
-                  Get Ticket
-                </Button>
+    <LoadingOverlay
+      active={submitted}
+      spinner
+      text='Processing Request...'>
+
+      <div className="App">
+        <header className="App-header">
+          St. Mary's of the Assumption Mass Ticket App
+        </header>
+        <div className="App-Body">
+          { (spots === null || sortedDays === null) &&
+            <div className="d-flex justify-content-center">
+              <Spinner animation="border" role="status">
+                <span className="sr-only">Loading...</span>
+              </Spinner>
+            </div>
+          }
+          { (spots !== null && sortedDays !== null) &&
+            <Form className="Request-ticket">
+              <Form.Group controlId="MassDayTime">
+                <Form.Label>Mass Day/Time</Form.Label>
+                <Form.Control as="select" onChange={e => setMassDayTime(e.target.value)}>
+                  <option>---</option>
+                  {
+                    sortedDays.map((item, index) => ( 
+                      <option key={index}>{item}</option> 
+                    ))
+                  }
+                </Form.Control>
               </Form.Group>
-            }
-          </Form>
-        }
-        { submitted &&
-          <div className="d-flex justify-content-center">
-            <Spinner animation="border" role="status">
-              <span className="sr-only">Loading...</span>
-            </Spinner>
-          </div>
-        }
+              { (!spotsAvailable() && massDayTime !== "---") &&
+                <div>
+                  There are no spots remaining for this mass.
+                </div>
+              }
+              { (spotsAvailable() && massDayTime !== "---") &&
+                <div>
+                  <div>
+                    {getSpots()}
+                  </div>
+                  <Form.Group controlId="Email" size="lg">
+                    <Form.Label>Email Address</Form.Label>
+                    <Form.Control
+                      placeholder="name@example.com"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      type="email"
+                    />
+                  </Form.Group>
+                  <Form.Group controlId="NumberPeople">
+                    <Form.Label>Select Number of People</Form.Label>
+                    <Form.Control as="select" value={numPeople} onChange={e => setNumPeople(e.target.value)}>
+                      <option>---</option>
+                      <option>1-2</option>
+                      <option>3-4</option>
+                      <option>5-6</option>
+                    </Form.Control>
+                  </Form.Group>
+                </div>
+              }
+              { (massDayTime !== "---" && spots[massDayTime][numPeople] <= 0 && setNumPeople !== "---" && spotsAvailable()) &&
+                <div className="Selection-Alert">
+                  ***There are no spots remaining for {numPeople} people at this mass. Please select a dfferent group size or a different mass.
+                </div>
+              }
+              { canSubmit() &&
+                <Form.Group>
+                  <Button block size="lg" type="button" onClick={handleSubmit}>
+                    Get Ticket
+                  </Button>
+                </Form.Group>
+              }
+            </Form>
+          }
+        </div>
+        <Modal show={show} onHide={handleClose}>
+          <Modal.Header closeButton>
+            <Modal.Title>Alert</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            We see that you have already signed up for this mass with this email address.
+            If you need an additional ticket, press Confirm. If you need us to re-send your ticket(s),
+            press Re-send.
+          </Modal.Body>
+          <Modal.Footer>
+            <Button variant="secondary" onClick={handleClose}>
+              Close
+            </Button>
+            <Button variant="primary" onClick={handleResend}>
+              Re-send
+            </Button>
+            <Button variant="primary" onClick={handleNew}>
+              Confirm
+            </Button>
+          </Modal.Footer>
+        </Modal>
       </div>
-      <Modal show={show} onHide={handleClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Alert</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          We see that you have already signed up for this mass with this email address.
-          If you need an additional ticket, press Confirm. If you need us to re-send your ticket(s),
-          press Re-send.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Close
-          </Button>
-          <Button variant="primary" onClick={handleResend}>
-            Re-send
-          </Button>
-          <Button variant="primary" onClick={handleNew}>
-            Confirm
-          </Button>
-        </Modal.Footer>
-      </Modal>
-    </div>
+    </LoadingOverlay>
   );
 }
 

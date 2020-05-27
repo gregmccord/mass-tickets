@@ -48,7 +48,7 @@ class Database (object):
         return tickets, days
 
 
-    # 
+    # Return the tickets that this person has on this day
     def check_has_ticket(self, mass_day_time, email):
 
         self.cursor.execute("SELECT ticket FROM tickets_by_email WHERE mass_day_time=%s AND email=%s", [mass_day_time, email])
@@ -65,8 +65,56 @@ class Database (object):
 
     # Get a new ticket for mass and update available amounts
     def get_new_ticket_for_mass(self, mass_day_time, num_people):
-        pass
 
+        dec12 = 1 if num_people == "1-2" else 0
+        dec34 = 1 if num_people == "3-4" else 0
+        dec56 = 1 if num_people == "5-6" else 0
+        
+        db.cursor.execute('''UPDATE tickets_by_mass
+                             SET num12 = num12 - %s,
+                                 num34 = num34 - %s,
+                                 num56 = num56 - %s
+                             WHERE mass_day_time = %s AND num12 >= 0 AND num34 >= 0 AND num56 >= 0
+                             RETURNING tickets_by_mass.*
+                          ''', [dec12, dec34, dec56, mass_day_time])
+
+        row = self.cursor.fetchone()
+
+        if row is not None:
+            db.cursor.execute("INSERT INTO tickets_by_email VALUES (%s, %s, 'BLANK_TICKET')", [mass_day_time, email])
+            db.conn.commit()
+
+            return True
+        else:
+            # Lost race condition
+            return False
+
+
+    # Return a list of all used ticket seats for a specified mass
+    def get_all_used_tickets_for_mass(self, mass_day_time):
+
+        self.cursor.execute("SELECT ticket FROM tickets_by_email WHERE mass_day_time=%s AND ticket != 'BLANK_TICKET'", [mass_day_time])
+
+        occupied_seats = []
+        row = self.cursor.fetchone()
+
+        while row is not None:
+            occupied_seats.append(row[0])
+            row = self.cursor.fetchone()
+
+        return occupied_seats
+
+
+    # Replace BLANK_TICKET with correct ticket
+    def correct_placeholder_ticket(mass_day_time, email, ticket_seat):
+
+        # Update at most one record
+        db.cursor.execute('''UPDATE tickets_by_email
+                             SET ticket = %s
+                             WHERE mass_day_time = %s AND email = %s AND ticket = 'BLANK_TICKET' AND
+                                   ID =(SELECT ID FROM tickets_by_email WHERE mass_day_time = %s AND email = %s AND ticket = 'BLANK_TICKET' ORDER BY ID LIMIT 1) 
+                          ''', [ticket_seat, mass_day_time, email, mass_day_time, email])
+        db.conn.commit()
 
     # Close database connection
     def close(self):
