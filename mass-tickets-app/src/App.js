@@ -19,6 +19,7 @@ function App() {
   const [sortedDays, setSortedDays] = useState(null);
   const [prevTickets, setPrevTickets] = useState(null);
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     async function fetchNumTickets() {
@@ -43,7 +44,7 @@ function App() {
           sendNew();
         }
       }
-    fetchPrevTickets();
+      fetchPrevTickets();
     }
 
   }, [submitted]); // eslint-disable-line
@@ -93,9 +94,9 @@ function App() {
   function getSpots() {
     let initString = "";
 
-    initString += "Spots remaining for 1-2 people: " + spots[massDayTime]["1-2"] + "\n";
-    initString += "Spots remaining for 3-4 people: " + spots[massDayTime]["3-4"] + "\n";
-    initString += "Spots remaining for 5-6 people: " + spots[massDayTime]["5-6"] + "\n";
+    initString += "Reservations remaining for 1-2 people: " + spots[massDayTime]["1-2"] + "\n";
+    initString += "Reservations remaining for 3-4 people: " + spots[massDayTime]["3-4"] + "\n";
+    initString += "Reservations remaining for 5-6 people: " + spots[massDayTime]["5-6"] + "\n";
     initString += "\n"
 
     return initString;
@@ -108,22 +109,48 @@ function App() {
   function sendNew() {
     console.log("New!");
     setSubmitted(false);
+
+    setSending(true);
+
+    async function getNewTicket() {
+      let data = await fetch('/getNewTicket?mass_day_time=' + massDayTime + '&email=' + email + '&num_people=' + numPeople).then(res => res.json());
+      setSending(false);
+
+      // New screen - please check your email and spam folder, we have sent your tickets to you + open this image
+      const success = data.success;
+      const ticket = data.ticket;
+
+      if (success) {
+        window.open(ticket, "_blank")
+      }
+    }
+    getNewTicket();
   }
 
   function resend() {
     console.log("Old!");
     setSubmitted(false);
+
+    setSending(true);
+
+    async function getOldTickets() {
+      await fetch('/getOldTicket?mass_day_time=' + massDayTime + '&email=' + email + '&tickets=' + prevTickets).then(res => res.json());
+      setSending(false);
+
+      // New screen - please check your email and spam folder, we have re-sent your tickets to you
+    }
+    getOldTickets();
   }
 
   return (
     <LoadingOverlay
-      active={submitted}
+      active={submitted || sending}
       spinner
       text='Processing Request...'>
 
       <div className="App">
         <header className="App-header">
-          St. Mary's of the Assumption Mass Ticket App
+          St. Mary's of the Assumption Mass Reservations
         </header>
         <div className="App-Body">
           { (spots === null || sortedDays === null) &&
@@ -136,7 +163,7 @@ function App() {
           { (spots !== null && sortedDays !== null) &&
             <Form className="Request-ticket">
               <Form.Group controlId="MassDayTime">
-                <Form.Label>Mass Day/Time</Form.Label>
+                <Form.Label>Select Mass Day/Time</Form.Label>
                 <Form.Control as="select" onChange={e => setMassDayTime(e.target.value)}>
                   <option>---</option>
                   {
@@ -148,7 +175,7 @@ function App() {
               </Form.Group>
               { (!spotsAvailable() && massDayTime !== "---") &&
                 <div>
-                  There are no spots remaining for this mass.
+                  There are no reservations remaining for this mass.
                 </div>
               }
               { (spotsAvailable() && massDayTime !== "---") &&
@@ -157,7 +184,7 @@ function App() {
                     {getSpots()}
                   </div>
                   <Form.Group controlId="Email" size="lg">
-                    <Form.Label>Email Address</Form.Label>
+                    <Form.Label>Enter Email Address</Form.Label>
                     <Form.Control
                       placeholder="name@example.com"
                       value={email}
@@ -166,7 +193,7 @@ function App() {
                     />
                   </Form.Group>
                   <Form.Group controlId="NumberPeople">
-                    <Form.Label>Select Number of People</Form.Label>
+                    <Form.Label>Select Number of People in Party</Form.Label>
                     <Form.Control as="select" value={numPeople} onChange={e => setNumPeople(e.target.value)}>
                       <option>---</option>
                       <option>1-2</option>
@@ -184,7 +211,7 @@ function App() {
               { canSubmit() &&
                 <Form.Group>
                   <Button block size="lg" type="button" onClick={handleSubmit}>
-                    Get Ticket
+                    Make Reservation
                   </Button>
                 </Form.Group>
               }
@@ -193,11 +220,11 @@ function App() {
         </div>
         <Modal show={show} onHide={handleClose}>
           <Modal.Header closeButton>
-            <Modal.Title>Alert</Modal.Title>
+            <Modal.Title>Already Have Reservation</Modal.Title>
           </Modal.Header>
           <Modal.Body>
-            We see that you have already signed up for this mass with this email address.
-            If you need an additional ticket, press Confirm. If you need us to re-send your ticket(s),
+            We see that you have already have a reservation for this mass.
+            If you need an additional reservation, press 'Make Another Reservation'. If you need us to re-send your reservation(s),
             press Re-send.
           </Modal.Body>
           <Modal.Footer>
@@ -208,7 +235,7 @@ function App() {
               Re-send
             </Button>
             <Button variant="primary" onClick={handleNew}>
-              Confirm
+              Make Another Reservation
             </Button>
           </Modal.Footer>
         </Modal>

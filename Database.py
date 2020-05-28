@@ -63,25 +63,25 @@ class Database (object):
 
 
     # Get a new ticket for mass and update available amounts
-    def get_new_ticket_for_mass(self, mass_day_time, num_people):
+    def get_new_ticket_for_mass(self, mass_day_time, email, num_people):
 
         dec12 = 1 if num_people == "1-2" else 0
         dec34 = 1 if num_people == "3-4" else 0
         dec56 = 1 if num_people == "5-6" else 0
         
-        db.cursor.execute('''UPDATE tickets_by_mass
-                             SET num12 = num12 - %s,
-                                 num34 = num34 - %s,
-                                 num56 = num56 - %s
-                             WHERE mass_day_time = %s AND num12 >= 0 AND num34 >= 0 AND num56 >= 0
-                             RETURNING tickets_by_mass.*
-                          ''', [dec12, dec34, dec56, mass_day_time])
+        self.cursor.execute('''UPDATE tickets_by_mass
+                               SET num12 = num12 - %s,
+                                   num34 = num34 - %s,
+                                   num56 = num56 - %s
+                               WHERE mass_day_time = %s AND num12 >= 0 AND num34 >= 0 AND num56 >= 0
+                               RETURNING tickets_by_mass.*
+                            ''', [dec12, dec34, dec56, mass_day_time])
 
         row = self.cursor.fetchone()
 
         if row is not None:
-            db.cursor.execute("INSERT INTO tickets_by_email VALUES (%s, %s, 'BLANK_TICKET')", [mass_day_time, email])
-            db.conn.commit()
+            self.cursor.execute("INSERT INTO tickets_by_email VALUES (%s, %s, 'BLANK_TICKET')", [mass_day_time, email])
+            self.conn.commit()
 
             return True
         else:
@@ -105,15 +105,15 @@ class Database (object):
 
 
     # Replace BLANK_TICKET with correct ticket
-    def correct_placeholder_ticket(mass_day_time, email, ticket_seat):
+    def correct_placeholder_ticket(self, mass_day_time, email, ticket_seat):
 
         # Update at most one record
-        db.cursor.execute('''UPDATE tickets_by_email
-                             SET ticket = %s
-                             WHERE mass_day_time = %s AND email = %s AND ticket = 'BLANK_TICKET' AND
-                                   ID =(SELECT ID FROM tickets_by_email WHERE mass_day_time = %s AND email = %s AND ticket = 'BLANK_TICKET' ORDER BY ID LIMIT 1) 
-                          ''', [ticket_seat, mass_day_time, email, mass_day_time, email])
-        db.conn.commit()
+        self.cursor.execute('''UPDATE tickets_by_email
+                               SET ticket = %s
+                               WHERE mass_day_time = %s AND email = %s AND ticket = 'BLANK_TICKET' AND
+                                     CTID =(SELECT CTID FROM tickets_by_email WHERE mass_day_time = %s AND email = %s AND ticket = 'BLANK_TICKET' ORDER BY CTID LIMIT 1) 
+                            ''', [ticket_seat, mass_day_time, email, mass_day_time, email])
+        self.conn.commit()
 
     # Close database connection
     def close(self):
@@ -125,6 +125,11 @@ class Database (object):
 
 # Test functions above by passing in case number to test
 def _test():
+
+    db = Database()
+    db.cursor.execute("DROP TABLE tickets_by_mass, tickets_by_email")
+    db.conn.commit()
+    db.close()
 
     try:
         db = Database()

@@ -6,10 +6,12 @@
 #-----------------------------------------------------------------------
 
 import os
+import img2pdf 
+from PIL import Image 
 import Database as db
 from urllib.parse import unquote
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_file
 
 #-----------------------------------------------------------------------
 
@@ -57,11 +59,12 @@ def get_new_ticket():
 
     mass_day_time = unquote(request.args.get('mass_day_time'))
     email = unquote(request.args.get('email'))
+    num_people = unquote(request.args.get('num_people'))
 
     mass_db = db.Database()
 
     # Determine if this request won the race condition and got the ticket
-    did_get_ticket = mass_db.get_new_ticket_for_mass(mass_day_time, num_people)
+    did_get_ticket = mass_db.get_new_ticket_for_mass(mass_day_time, email, num_people)
 
     if did_get_ticket:
         # Get ticket seat
@@ -75,7 +78,7 @@ def get_new_ticket():
         # Email ticket
         send_email(mass_day_time, email, ticket)
 
-        return jsonify(success=True, ticket=ticket)
+        return ticket
 
     else:
         mass_db.close()
@@ -99,7 +102,8 @@ def get_old_tickets():
 def det_ticket_seat(mass_day_time):
     occupied_seats = find_occupied_seats(mass_day_time)
 
-    pass
+    # TEMP
+    return 'A 1 L'
 
 
 # Determine which seats are occupied for use in greedy algorithm
@@ -113,7 +117,9 @@ def find_occupied_seats(mass_day_time):
 
 # Create ticket
 def create_ticket(ticket_seat):
-    pass
+
+    # TEMP
+    return send_file('sample seat.pdf', 'sample seat.pdf')
 
 
 # Send email with specified attachment
@@ -128,11 +134,11 @@ def send_email(mass_day_time, email, attachment):
     return requests.post(
         "https://api.mailgun.net/v3/" + os.environ['MAILGUN_DOMAIN'],
         auth=("api", os.environ['MAILGUN_API_KEY']),
-        files=[("attachment", ("Mass Ticket for " + mass_day_time +".jpg", attachment))],
-        data={"from": "Mass Ticket App <mass.tickets@mass-tickets.heroku.com>",
+        files=[("attachment", ("Mass Reservation for " + mass_day_time +".jpg", open('sample seat.pdf', 'rb')))],
+        data={"from": "Mass Reservation App <mass.tickets@mass-tickets.heroku.com>",
               "to": email,
-              "subject": "Ticket to St. Mary's of the Assumption",
-              "text": "We hope you enjoy! Please see your ticket for seating and further instructions."})
+              "subject": "Reservation for Mass at St. Mary's of the Assumption",
+              "text": "We hope you enjoy! Please see your reservation for seating and further instructions."})
 
 
 # Main function
